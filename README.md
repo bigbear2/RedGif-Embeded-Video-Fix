@@ -14,7 +14,7 @@ A Tampermonkey/Greasemonkey userscript that fixes various issues with RedGif vid
 ## 📦 Installation
 
 1. Install [Tampermonkey](https://www.tampermonkey.net/) (Chrome/Edge) or [Greasemonkey](https://www.greasespot.net/) (Firefox)
-2. Click [this link](https://github.com/bigbear2/RedGif-Embeded-Video-Fix/raw/main/redgif-embed-video-fix.user) to install the script
+2. Click [this link](https://github.com/bigbear2/RedGif-Embeded-Video-Fix/raw/refs/heads/main/redgif-embed-video-fix.user.js) to install the script
 3. Or create a new script and paste the code manually
 
 ## 🎯 How it works
