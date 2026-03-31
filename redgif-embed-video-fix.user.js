@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RedGif Embeded Video Fix
 // @namespace    http://tampermonkey.net/
-// @version      0.10
+// @version      0.11
 // @description  RedGif Embeded Video Fix!
 // @author       bigbear2
 // @description  Fixes embedded RedGif videos: disables loop, enables audio, blocks links and adds play/stop toggle.
@@ -119,6 +119,8 @@
 
         let elm = document.querySelector("#root > div > div > div > div > div.backdropWrap");
         elm.addEventListener('click', videoTogglePlay);
+        let img = document.querySelector("#root > div > div > div > div > div.backdropWrap > img");
+        img.setAttribute('style', 'opacity: 0;');
 
         state.videoFixed = true;
         log.info('Video fixed successfully.');
