@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         RedGif Embeded Video Fix
 // @namespace    http://tampermonkey.net/
-// @version      0.11
+// @version      0.12
 // @description  RedGif Embeded Video Fix!
 // @author       bigbear2
 // @description  Fixes embedded RedGif videos: disables loop, enables audio, blocks links and adds play/stop toggle.
 // @homepage     https://github.com/bigbear2/
+// @updateURL    https://github.com/bigbear2/RedGif-Embeded-Video-Fix/raw/refs/heads/main/redgif-embed-video-fix.user.js
 // @match        https://www.redgifs.com/ifr/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=redgifs.com
 // @grant        none
