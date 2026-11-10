@@ -1,43 +1,51 @@
-# 🎬 RedGif Embedded Video Fix
+# RedGif Embedded Video Fix
 
-A Tampermonkey/Greasemonkey userscript that fixes various issues with RedGif videos embedded in third-party pages.
+A Tampermonkey/Greasemonkey userscript that makes RedGif videos embedded on third-party pages easier to control. It disables autoplay and looping, enables audio when possible, blocks navigation links, and adds click-to-play/pause behavior.
 
-## 🌟 Features
+## Features
 
-- ⏸️ **Stops autoplay and looping** - Videos stay paused until you choose to play them
-- 🔊 **Enables audio** - Clicks the RedGif sound button when it is available
-- 🔗 **Blocks navigation links** - Prevents video links from navigating away from the embed
-- 🎮 **Click-to-play/pause** - Click the video backdrop to start or pause playback
-- 🖱️ **Mouse-aware playback** - Pauses when leaving the embed or using the mouse wheel, and resumes when re-entering
-- ⌨️ **Keyboard seeking** - Use the left and right arrow keys to skip backward or forward by 5 seconds
-- 🔄 **Dynamic detection** - Handles videos and controls added after the page loads
-- 🐛 **Debug logging** - Enable diagnostic messages by changing the `DEBUG` constant
+- Keeps embedded videos paused until you start them.
+- Disables looping and attempts to enable audio.
+- Prevents video links from navigating away from the embed.
+- Click the video backdrop to play or pause.
+- Optionally pauses when leaving the embed or using the mouse wheel, and resumes on re-entry.
+- Optionally seek backward or forward with the left/right arrow keys.
+- Detects videos and controls added dynamically.
 
-## 📦 Installation
+## Choose a version
 
-1. Install [Tampermonkey](https://www.tampermonkey.net/) (Chrome/Edge) or [Greasemonkey](https://www.greasespot.net/) (Firefox)
-2. Click [this link](https://github.com/bigbear2/RedGif-Embeded-Video-Fix/raw/refs/heads/main/redgif-embed-video-fix.user.js) to install the script. Your userscript manager will check this URL for updates.
-3. Or create a new script and paste the code manually
+Install **only one** version for each browser:
 
-## 🎯 How it works
+### Original — settings in the script
 
-The script runs on pages matching `https://www.redgifs.com/ifr/*` (typically RedGif embeds) and:
+[Install the original userscript](https://github.com/bigbear2/RedGif-Embeded-Video-Fix/raw/refs/heads/main/redgif-embed-video-fix.user.js)
 
-1. Disables autoplay and looping on videos, and pauses any video already playing
-2. Blocks programmatic video playback until you click the backdrop to play
-3. Clicks the sound button (`.SoundButton`) when it is available
-4. Prevents `.videoLink` and `/watch/` links from navigating away
-5. Adds click-to-play/pause control to the video backdrop
-6. Pauses playback when the pointer leaves the embed or the mouse wheel is used, and resumes on re-entry
-7. When `ENABLE_KEYBOARD_SKIP` is enabled, seeks 5 seconds backward or forward with the arrow keys
-8. Watches for dynamically added page elements and applies the fixes to them
+The playback and keyboard options are configured by editing the constants near the top of the script. By default, pause-on-exit, resume-on-enter, pause-on-wheel, and keyboard seeking are enabled; arrow keys skip 5 seconds.
 
-## 🛠️ Usage
+### Settings — configure from the embed
 
-The fixes are applied automatically. Click the video backdrop to start playback, and click it again to pause. Use the left and right arrow keys to seek backward or forward by 5 seconds.
+[Install the settings userscript](https://github.com/bigbear2/RedGif-Embeded-Video-Fix/raw/refs/heads/main/redgif-embed-video-fix-settings.user.js)
 
-Set `ENABLE_KEYBOARD_SKIP` to `false` in the userscript settings to disable keyboard seeking.
+Use the gear icon at the top-right of the embed to open **Userscript Settings**. Toggle the four playback/keyboard options and choose the number of seconds to skip. The defaults match the original version, and your userscript manager saves your choices.
 
-### Debug mode
+> Do not install both versions at the same time: they run on the same RedGif embeds.
 
-To enable diagnostic messages in the browser console, change `const DEBUG = false` to `const DEBUG = true` in the userscript and save it. The script does not expose a `toggleDebug()` console function.
+## Installation
+
+1. Install [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/).
+2. Choose one version above and open its install link.
+3. Confirm the installation in your userscript manager.
+
+Both scripts run on pages matching `https://www.redgifs.com/ifr/*`.
+
+## Usage
+
+Click the video backdrop to play or pause. When keyboard seeking is enabled, use the left and right arrow keys to seek backward or forward. The settings version lets you change the skip duration and playback options without editing the script.
+
+## Debug mode
+
+To enable diagnostic messages, set `const DEBUG = false` to `true` in the userscript source and save it. The script does not expose a `toggleDebug()` console function.
+
+## License
+
+MIT
