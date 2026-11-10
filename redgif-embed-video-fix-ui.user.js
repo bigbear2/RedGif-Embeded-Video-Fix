@@ -1,12 +1,12 @@
 // ==UserScript==
-// @name         RedGif Embeded Video Fix - Settings
+// @name         RedGif Embeded Video Fix - UI
 // @namespace    http://tampermonkey.net/
-// @version      0.19
+// @version      0.21
 // @author       bigbear2
-// @description  Fixes embedded RedGif videos with configurable playback and keyboard settings.
+// @description  Fixes embedded RedGif videos with playback, looping, and keyboard settings.
 // @homepage     https://github.com/bigbear2/
-// @downloadURL  https://github.com/bigbear2/RedGif-Embeded-Video-Fix/raw/refs/heads/main/redgif-embed-video-fix-settings.user.js
-// @updateURL    https://github.com/bigbear2/RedGif-Embeded-Video-Fix/raw/refs/heads/main/redgif-embed-video-fix-settings.user.js
+// @downloadURL  https://github.com/bigbear2/RedGif-Embeded-Video-Fix/raw/refs/heads/main/redgif-embed-video-fix-ui.user.js
+// @updateURL    https://github.com/bigbear2/RedGif-Embeded-Video-Fix/raw/refs/heads/main/redgif-embed-video-fix-ui.user.js
 // @match        https://www.redgifs.com/ifr/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=redgifs.com
 // @sandbox      raw
@@ -27,6 +27,7 @@
     const DEBUG = false;
     const SETTINGS_STORAGE_KEY = 'redgifEmbedVideoFix.settings';
     const DEFAULT_SETTINGS = {
+        ENABLE_VIDEO_LOOP: false,
         ENABLE_PAUSE_ON_EXIT: true,
         ENABLE_PLAY_ON_ENTER: true,
         ENABLE_PAUSE_ON_WHEEL: true,
@@ -40,6 +41,7 @@
             if (!stored || typeof stored !== 'object') return { ...DEFAULT_SETTINGS };
 
             return {
+                ENABLE_VIDEO_LOOP: typeof stored.ENABLE_VIDEO_LOOP === 'boolean' ? stored.ENABLE_VIDEO_LOOP : DEFAULT_SETTINGS.ENABLE_VIDEO_LOOP,
                 ENABLE_PAUSE_ON_EXIT: typeof stored.ENABLE_PAUSE_ON_EXIT === 'boolean' ? stored.ENABLE_PAUSE_ON_EXIT : DEFAULT_SETTINGS.ENABLE_PAUSE_ON_EXIT,
                 ENABLE_PLAY_ON_ENTER: typeof stored.ENABLE_PLAY_ON_ENTER === 'boolean' ? stored.ENABLE_PLAY_ON_ENTER : DEFAULT_SETTINGS.ENABLE_PLAY_ON_ENTER,
                 ENABLE_PAUSE_ON_WHEEL: typeof stored.ENABLE_PAUSE_ON_WHEEL === 'boolean' ? stored.ENABLE_PAUSE_ON_WHEEL : DEFAULT_SETTINGS.ENABLE_PAUSE_ON_WHEEL,
@@ -70,53 +72,6 @@
         error: (...args) => DEBUG && console.error(APP_NAME, ...args)
     };
 
-    // ---------- UTILS ----------
-    function clickElement(element, options = {}) {
-        const config = {
-            scrollIntoView: true,
-            simulateFullSequence: true,
-            delay: 50,
-            clientX: 0,
-            clientY: 0,
-            ...options
-        };
-
-        if (!element) return false;
-
-        if (config.scrollIntoView) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-        }
-        try { element.focus(); } catch (e) { }
-
-        setTimeout(() => {
-            try {
-                const eventOptions = {
-                    bubbles: true, cancelable: true, view: window, detail: 1,
-                    screenX: 0, screenY: 0,
-                    clientX: config.clientX, clientY: config.clientY,
-                    ctrlKey: false, altKey: false, shiftKey: false, metaKey: false,
-                    button: 0, buttons: 1
-                };
-
-                if (config.simulateFullSequence) {
-                    element.dispatchEvent(new MouseEvent('mousedown', eventOptions));
-                    setTimeout(() => {
-                        element.dispatchEvent(new MouseEvent('mouseup', eventOptions));
-                        element.dispatchEvent(new MouseEvent('click', eventOptions));
-                        log.info('Full-sequence click on:', element);
-                    }, config.delay);
-                } else {
-                    element.click();
-                    log.info('Simple click on:', element);
-                }
-            } catch (e) {
-                log.error('Error during click:', e);
-            }
-        }, config.scrollIntoView ? 300 : 0);
-
-        return true;
-    }
-
     // ---------- BLOCK NATIVE AUTOPLAY ----------
     // Must run at document-start
     try {
@@ -137,16 +92,12 @@
         const videos = document.querySelectorAll('video');
         videos.forEach((video, index) => {
             try {
-                // If the user started playback, leave the video alone
-                if (state.userWantsPlay) return;
-
                 video.autoplay = false;
                 video.removeAttribute('autoplay');
-                video.loop = false;
-                video.removeAttribute('loop');
-                if (!video.paused) video.pause();
+                video.loop = settings.ENABLE_VIDEO_LOOP;
+                if (!state.userWantsPlay && !video.paused) video.pause();
 
-                log.info(`Video ${index + 1}: autoplay/loop off, paused.`);
+                log.info(`Video ${index + 1}: autoplay off, loop ${settings.ENABLE_VIDEO_LOOP ? 'on' : 'off'}.`);
             } catch (e) { }
         });
     }
@@ -259,6 +210,7 @@
                 box-shadow: none !important;
                 cursor: pointer !important;
                 box-sizing: border-box !important;
+                pointer-events: auto !important;
                 transition: opacity .18s ease !important;
             }
             #rg-settings-button:hover { opacity: .78 !important; }
@@ -276,6 +228,7 @@
                 box-sizing: border-box !important;
                 font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
                 color: #f5f5f6 !important;
+                pointer-events: auto !important;
             }
             #rg-settings-dialog {
                 display: flex !important;
@@ -334,6 +287,7 @@
             <section id="rg-settings-dialog" role="dialog" aria-modal="true" aria-labelledby="rg-settings-title" tabindex="-1">
                 <header id="rg-settings-header"><h2 id="rg-settings-title">Userscript Settings</h2></header>
                 <div id="rg-settings-content">
+                    <label class="rg-setting-row"><span>Enable video looping</span><input type="checkbox" data-setting="ENABLE_VIDEO_LOOP"></label>
                     <label class="rg-setting-row"><span>Pause when leaving the embed</span><input type="checkbox" data-setting="ENABLE_PAUSE_ON_EXIT"></label>
                     <label class="rg-setting-row"><span>Resume when entering the embed</span><input type="checkbox" data-setting="ENABLE_PLAY_ON_ENTER"></label>
                     <label class="rg-setting-row"><span>Pause when using the mouse wheel</span><input type="checkbox" data-setting="ENABLE_PAUSE_ON_WHEEL"></label>
@@ -372,6 +326,7 @@
             }
 
             const nextSettings = {
+                ENABLE_VIDEO_LOOP: modal.querySelector('[data-setting="ENABLE_VIDEO_LOOP"]').checked,
                 ENABLE_PAUSE_ON_EXIT: modal.querySelector('[data-setting="ENABLE_PAUSE_ON_EXIT"]').checked,
                 ENABLE_PLAY_ON_ENTER: modal.querySelector('[data-setting="ENABLE_PLAY_ON_ENTER"]').checked,
                 ENABLE_PAUSE_ON_WHEEL: modal.querySelector('[data-setting="ENABLE_PAUSE_ON_WHEEL"]').checked,
@@ -384,6 +339,7 @@
             try {
                 await GM_setValue(SETTINGS_STORAGE_KEY, nextSettings);
                 Object.assign(settings, nextSettings);
+                fixVideo();
                 closeSettingsModal();
             } catch (saveError) {
                 console.error(APP_NAME, 'Could not save settings:', saveError);
@@ -409,44 +365,23 @@
             'width:100vw',
             'height:100vh',
             'background:transparent',
-            'z-index:2147483647'
+            'z-index:2147483647',
+            'pointer-events:none'
         ].join(';');
 
-        // Click: forward it to the element underneath (e.g. the backdrop wired to toggleVideoPlay)
-        overlay.addEventListener('click', (event) => {
-            overlay.style.pointerEvents = 'none';
-            const elementBelow = document.elementFromPoint(event.clientX, event.clientY);
-            overlay.style.pointerEvents = '';
-
-            if (elementBelow && elementBelow !== overlay) {
-                clickElement(elementBelow, {
-                    scrollIntoView: false,
-                    simulateFullSequence: true,
-                    delay: 0,
-                    clientX: event.clientX,
-                    clientY: event.clientY
-                });
-            }
-        });
-
-        // Mouse enters the iframe: resume only if the overlay paused the video
-        overlay.addEventListener('mouseenter', () => {
+        const page = document.documentElement;
+        page.addEventListener('mouseenter', () => {
             if (!settings.ENABLE_PLAY_ON_ENTER) return;
             resumeVideoByOverlay();
         });
 
-        // Mouse leaves the iframe: pause the video
-        overlay.addEventListener('mouseleave', () => {
+        page.addEventListener('mouseleave', () => {
             if (!settings.ENABLE_PAUSE_ON_EXIT) return;
             pauseVideoByOverlay('mouse left iframe');
         });
 
-        // Mouse wheel: pause the video and still forward the scroll to the page
-        overlay.addEventListener('wheel', (event) => {
-            if (settings.ENABLE_PAUSE_ON_WHEEL) {
-                pauseVideoByOverlay('mouse wheel used');
-            }
-            window.scrollBy(event.deltaX, event.deltaY);
+        document.addEventListener('wheel', () => {
+            if (settings.ENABLE_PAUSE_ON_WHEEL) pauseVideoByOverlay('mouse wheel used');
         }, { passive: true });
 
         createSettingsControls(overlay);
@@ -457,7 +392,6 @@
     // ---------- KEYBOARD SKIP ----------
     function handleKeyboardSkip(event) {
         if (settingsModalOpen || !settings.ENABLE_KEYBOARD_SKIP || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
-        if (!document.getElementById('href-rg-overlay')) return;
         if (event.target instanceof Element && event.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return;
 
         const skip = event.key === 'ArrowLeft' ? -settings.SKIP_SECONDS : event.key === 'ArrowRight' ? settings.SKIP_SECONDS : 0;

@@ -1,34 +1,29 @@
 # RedGif Embedded Video Fix
 
-A Tampermonkey/Greasemonkey userscript that makes RedGif videos embedded on third-party pages easier to control. It disables autoplay and looping, enables audio when possible, blocks navigation links, and adds click-to-play/pause behavior.
-
-## Features
-
-- Keeps embedded videos paused until you start them.
-- Disables looping and attempts to enable audio.
-- Prevents video links from navigating away from the embed.
-- Click the video backdrop to play or pause.
-- Optionally pauses when leaving the embed or using the mouse wheel, and resumes on re-entry.
-- Optionally seek backward or forward with the left/right arrow keys.
-- Detects videos and controls added dynamically.
+Tampermonkey/Greasemonkey userscripts for controlling RedGif videos embedded on third-party pages. Both versions always block autoplay, can optionally disable looping, pause/resume videos based on pointer and wheel activity, and support arrow-key seeking.
 
 ## Choose a version
 
 Install **only one** version for each browser:
 
-### Original — settings in the script
+### Lite — options in the script
 
-[Install the original userscript](https://github.com/bigbear2/RedGif-Embeded-Video-Fix/raw/refs/heads/main/redgif-embed-video-fix.user.js)
+[Install RedGif Embed Video Fix Lite](https://github.com/bigbear2/RedGif-Embeded-Video-Fix/raw/refs/heads/main/redgif-embed-video-fix-lite.user.js)
 
-The playback and keyboard options are configured by editing the constants near the top of the script. By default, pause-on-exit, resume-on-enter, pause-on-wheel, and keyboard seeking are enabled; arrow keys skip 5 seconds.
+Edit the constants near the top of the script to configure behavior:
 
-### Settings — configure from the embed
+- Autoplay is always blocked.
+- `ENABLE_VIDEO_LOOP` defaults to `false`.
+- Pause-on-exit, resume-on-enter, pause-on-wheel, and keyboard seeking default to `true`.
+- `SKIP_SECONDS` defaults to `5`.
 
-[Install the settings userscript](https://github.com/bigbear2/RedGif-Embeded-Video-Fix/raw/refs/heads/main/redgif-embed-video-fix-settings.user.js)
+### UI — options in the embed
 
-Use the gear icon at the top-right of the embed to open **Userscript Settings**. Toggle the four playback/keyboard options and choose the number of seconds to skip. The defaults match the original version, and your userscript manager saves your choices.
+[Install RedGif Embed Video Fix UI](https://github.com/bigbear2/RedGif-Embeded-Video-Fix/raw/refs/heads/main/redgif-embed-video-fix-ui.user.js)
 
-> Do not install both versions at the same time: they run on the same RedGif embeds.
+Open the gear icon in the top-right of the embed to change looping, pause/resume behavior, keyboard seeking, and the seek duration. Autoplay is always blocked. Settings are saved by your userscript manager. Looping defaults to off; the remaining options default to on, with a 5-second seek.
+
+> Do not install both versions at the same time: they run on the same RedGif embed pages.
 
 ## Installation
 
@@ -38,9 +33,20 @@ Use the gear icon at the top-right of the embed to open **Userscript Settings**.
 
 Both scripts run on pages matching `https://www.redgifs.com/ifr/*`.
 
+## Features
+
+- Always prevents automatic playback until you click the video to play.
+- Disables looping unless enabled in the selected version.
+- Attempts to enable audio when the RedGif sound control is available.
+- Prevents video links from navigating away from the embed.
+- Click the video backdrop to play or pause.
+- Optionally pauses when leaving the embed or using the mouse wheel, and resumes on re-entry.
+- Optionally seek backward or forward with the left/right arrow keys.
+- Detects videos and controls added dynamically.
+
 ## Usage
 
-Click the video backdrop to play or pause. When keyboard seeking is enabled, use the left and right arrow keys to seek backward or forward. The settings version lets you change the skip duration and playback options without editing the script.
+Click the video backdrop to play or pause. When keyboard seeking is enabled, use the left and right arrow keys to seek by the configured number of seconds.
 
 ## Debug mode
 
