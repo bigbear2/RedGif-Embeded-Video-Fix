@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RedGif Embeded Video Fix
 // @namespace    http://tampermonkey.net/
-// @version      0.14
+// @version      0.17
 // @author       bigbear2
 // @description  Fixes embedded RedGif videos: disables loop, enables audio, blocks links and adds play/stop toggle.
 // @homepage     https://github.com/bigbear2/
@@ -16,37 +16,87 @@
 (function () {
     'use strict';
 
-    const APP_NAME = '🤖 Embeded Video Fix';
+    // ---------- SETTINGS ----------
+    const ENABLE_PAUSE_ON_EXIT = true;      // Pause the video when the mouse leaves the iframe
+    const ENABLE_PLAY_ON_ENTER = true;      // Resume the video when the mouse re-enters the iframe
+    const ENABLE_PAUSE_ON_WHEEL = true;     // Pause the video when the mouse wheel is used
+    const ENABLE_KEYBOARD_SKIP = true;      // Skip +\- 5 seconds the video when the user presses the arrows keys (only if the overlay is present)
+
+    const APP_NAME = '🤖 Embedded Video Fix';
     const DEBUG = false;
 
     const state = {
         videoFixed: false,
         audioFixed: false,
-        userWantsPlay: false, // Flag: l'utente ha cliccato per far partire il video
+        userWantsPlay: false,     // Flag: the user clicked to start the video
+        pausedByOverlay: false,   // Flag: the video was paused by the overlay (mouse leave or wheel)
         observer: null
     };
 
     // ---------- LOG ----------
     const log = {
-        info: (...a) => DEBUG && console.log(APP_NAME, ...a),
-        warn: (...a) => DEBUG && console.warn(APP_NAME, ...a),
-        error: (...a) => DEBUG && console.error(APP_NAME, ...a)
+        info: (...args) => DEBUG && console.log(APP_NAME, ...args),
+        warn: (...args) => DEBUG && console.warn(APP_NAME, ...args),
+        error: (...args) => DEBUG && console.error(APP_NAME, ...args)
     };
 
-    const wait = (ms) => new Promise(r => setTimeout(r, ms));
+    // ---------- UTILS ----------
+    function clickElement(element, options = {}) {
+        const config = {
+            scrollIntoView: true,
+            simulateFullSequence: true,
+            delay: 50,
+            clientX: 0,
+            clientY: 0,
+            ...options
+        };
 
-    // ---------- BLOCCO AUTOPLAY NATIVO ----------
-    // Va eseguito a document-start
-    try {
-        const origPlay = HTMLMediaElement.prototype.play;
-        HTMLMediaElement.prototype.play = function () {
-            if (this.tagName === 'VIDEO') {
-                // Se l'utente non ha cliccato, blocca il play automatico
-                if (!state.userWantsPlay) {
-                    return Promise.resolve();
+        if (!element) return false;
+
+        if (config.scrollIntoView) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+        }
+        try { element.focus(); } catch (e) { }
+
+        setTimeout(() => {
+            try {
+                const eventOptions = {
+                    bubbles: true, cancelable: true, view: window, detail: 1,
+                    screenX: 0, screenY: 0,
+                    clientX: config.clientX, clientY: config.clientY,
+                    ctrlKey: false, altKey: false, shiftKey: false, metaKey: false,
+                    button: 0, buttons: 1
+                };
+
+                if (config.simulateFullSequence) {
+                    element.dispatchEvent(new MouseEvent('mousedown', eventOptions));
+                    setTimeout(() => {
+                        element.dispatchEvent(new MouseEvent('mouseup', eventOptions));
+                        element.dispatchEvent(new MouseEvent('click', eventOptions));
+                        log.info('Full-sequence click on:', element);
+                    }, config.delay);
+                } else {
+                    element.click();
+                    log.info('Simple click on:', element);
                 }
+            } catch (e) {
+                log.error('Error during click:', e);
             }
-            return origPlay.apply(this, arguments);
+        }, config.scrollIntoView ? 300 : 0);
+
+        return true;
+    }
+
+    // ---------- BLOCK NATIVE AUTOPLAY ----------
+    // Must run at document-start
+    try {
+        const originalPlay = HTMLMediaElement.prototype.play;
+        HTMLMediaElement.prototype.play = function () {
+            if (this.tagName === 'VIDEO' && !state.userWantsPlay) {
+                // The user did not click: block automatic playback
+                return Promise.resolve();
+            }
+            return originalPlay.apply(this, arguments);
         };
     } catch (e) {
         log.error('Failed to override play:', e);
@@ -55,22 +105,23 @@
     // ---------- FIX VIDEO ----------
     function fixVideo() {
         const videos = document.querySelectorAll('video');
-        videos.forEach((v, i) => {
+        videos.forEach((video, index) => {
             try {
-                // Se l'utente ha cliccato, non toccare nulla
+                // If the user started playback, leave the video alone
                 if (state.userWantsPlay) return;
 
-                v.autoplay = false;
-                v.removeAttribute('autoplay');
-                v.loop = false;
-                v.removeAttribute('loop');
-                if (!v.paused) v.pause();
-                log.info(`Video ${i + 1}: autoplay/loop off, paused.`);
+                video.autoplay = false;
+                video.removeAttribute('autoplay');
+                video.loop = false;
+                video.removeAttribute('loop');
+                if (!video.paused) video.pause();
+
+                log.info(`Video ${index + 1}: autoplay/loop off, paused.`);
             } catch (e) { }
         });
     }
 
-    // ---------- FIX LINK ----------
+    // ---------- FIX LINKS ----------
     function fixLinks() {
         const links = document.querySelectorAll('a.videoLink, a[href^="/watch/"]');
         links.forEach(link => {
@@ -79,12 +130,13 @@
                 link.setAttribute('href', '#');
                 link.style.cursor = 'default';
                 link.style.opacity = '0.7';
-                // Evita che il click faccia qualcosa
-                if (!link.dataset.__fixed) {
-                    link.dataset.__fixed = '1';
-                    link.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
+
+                // Prevent clicks on links from doing anything
+                if (!link.dataset.fixed) {
+                    link.dataset.fixed = '1';
+                    link.addEventListener('click', (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
                     }, true);
                 }
             } catch (e) { }
@@ -92,50 +144,152 @@
     }
 
     // ---------- TOGGLE PLAY ----------
-    function videoTogglePlay() {
+    function toggleVideoPlay() {
         const video = document.querySelector('video');
         if (!video) return;
 
         if (video.paused) {
-            log.info('User play requested.');
+            log.info('User requested play.');
             state.userWantsPlay = true;
+            state.pausedByOverlay = false;
             video.muted = false;
             video.play().catch(e => log.warn('play() rejected:', e));
         } else {
-            log.info('User pause requested.');
-            // Se l'utente mette in pausa, riabilitiamo il blocco autoplay
+            log.info('User requested pause.');
+            // Re-enable the autoplay block after a manual pause
             state.userWantsPlay = false;
+            state.pausedByOverlay = false;
             video.pause();
         }
     }
 
-    // ---------- BACKDROP ----------
+    // ---------- PAUSE / RESUME HELPERS ----------
+    function pauseVideoByOverlay(reason) {
+        const video = document.querySelector('video');
+        if (!video || video.paused) return;
+
+        log.info(`Pausing video: ${reason}.`);
+        state.pausedByOverlay = true;
+        state.userWantsPlay = false;
+        video.pause();
+    }
+
+    function resumeVideoByOverlay() {
+        const video = document.querySelector('video');
+        if (!video || !state.pausedByOverlay) return;
+
+        log.info('Resuming video: mouse entered iframe.');
+        state.pausedByOverlay = false;
+        state.userWantsPlay = true;
+        video.play().catch(e => log.warn('play() rejected:', e));
+    }
+
+    // ---------- OVERLAY href-rg-overlay ----------
+    function createOverlay() {
+        if (document.getElementById('href-rg-overlay')) return;
+
+        const overlay = document.createElement('div');
+        overlay.id = 'href-rg-overlay';
+        overlay.style.cssText = [
+            'position:fixed',
+            'top:0',
+            'left:0',
+            'width:100vw',
+            'height:100vh',
+            'background:transparent',
+            'z-index:2147483647'
+        ].join(';');
+
+        // Click: forward it to the element underneath (e.g. the backdrop wired to toggleVideoPlay)
+        overlay.addEventListener('click', (event) => {
+            overlay.style.pointerEvents = 'none';
+            const elementBelow = document.elementFromPoint(event.clientX, event.clientY);
+            overlay.style.pointerEvents = '';
+
+            if (elementBelow && elementBelow !== overlay) {
+                clickElement(elementBelow, {
+                    scrollIntoView: false,
+                    simulateFullSequence: true,
+                    delay: 0,
+                    clientX: event.clientX,
+                    clientY: event.clientY
+                });
+            }
+        });
+
+        // Mouse enters the iframe: resume only if the overlay paused the video
+        overlay.addEventListener('mouseenter', () => {
+            if (!ENABLE_PLAY_ON_ENTER) return;
+            resumeVideoByOverlay();
+        });
+
+        // Mouse leaves the iframe: pause the video
+        overlay.addEventListener('mouseleave', () => {
+            if (!ENABLE_PAUSE_ON_EXIT) return;
+            pauseVideoByOverlay('mouse left iframe');
+        });
+
+        // Mouse wheel: pause the video and still forward the scroll to the page
+        overlay.addEventListener('wheel', (event) => {
+            if (ENABLE_PAUSE_ON_WHEEL) {
+                pauseVideoByOverlay('mouse wheel used');
+            }
+            window.scrollBy(event.deltaX, event.deltaY);
+        }, { passive: true });
+
+        document.body.appendChild(overlay);
+        log.info('Overlay href-rg-overlay created.');
+    }
+
+    // ---------- KEYBOARD SKIP ----------
+    function handleKeyboardSkip(event) {
+        if (!ENABLE_KEYBOARD_SKIP || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+        if (!document.getElementById('href-rg-overlay')) return;
+        if (event.target instanceof Element && event.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return;
+
+        const skip = event.key === 'ArrowLeft' ? -5 : event.key === 'ArrowRight' ? 5 : 0;
+        if (!skip) return;
+
+        const video = document.querySelector('video');
+        if (!video || !Number.isFinite(video.currentTime)) return;
+
+        const nextTime = Math.max(0, video.currentTime + skip);
+        video.currentTime = Number.isFinite(video.duration) ? Math.min(video.duration, nextTime) : nextTime;
+        event.preventDefault();
+        log.info(`Skipped video to ${video.currentTime} seconds.`);
+    }
+
+    // ---------- FIX BACKDROP ----------
     function fixBackdrop() {
         if (state.videoFixed) return;
+
         const backdrop = document.querySelector('#root > div > div > div > div > div.backdropWrap');
         if (backdrop) {
-            backdrop.addEventListener('click', videoTogglePlay);
-            const img = backdrop.querySelector('img');
-            if (img) img.style.opacity = '0';
+            backdrop.addEventListener('click', toggleVideoPlay);
+
+            const image = backdrop.querySelector('img');
+            if (image) image.style.opacity = '0';
+
             state.videoFixed = true;
-            log.info('Backdrop bound + toggle ready.');
+            log.info('Backdrop bound and toggle ready.');
         }
     }
 
-    // ---------- AUDIO ----------
-    async function fixAudio() {
+    // ---------- FIX AUDIO ----------
+    function fixAudio() {
         if (state.audioFixed) return;
-        const btn = document.querySelector('.SoundButton');
-        if (btn) {
+
+        const soundButton = document.querySelector('.SoundButton');
+        if (soundButton) {
             try {
-                btn.click();
+                soundButton.click();
                 state.audioFixed = true;
-                log.info('Audio toggled.');
+                log.info('Audio enabled.');
             } catch (e) { }
         }
     }
 
-    // ---------- TICK (eseguito una sola volta e su nuovi nodi) ----------
+    // ---------- APPLY FIXES ----------
     function applyFixes() {
         fixVideo();
         fixLinks();
@@ -146,38 +300,36 @@
     // ---------- OBSERVER ----------
     function startObserver() {
         if (state.observer) return;
+
         state.observer = new MutationObserver(() => {
-            // Se l'utente ha cliccato, ignoriamo i nuovi video per non fermarlo
+            // If the user started playback, ignore new nodes so the video is not stopped
             if (state.userWantsPlay) return;
 
-            // Applichiamo i fix solo se non sono già stati applicati
             applyFixes();
         });
+
         state.observer.observe(document.body, {
-            childList: true, // Guarda solo l'aggiunta di nuovi nodi, NON gli attributi
+            childList: true, // Watch only added nodes, NOT attributes
             subtree: true
         });
+
         log.info('MutationObserver started.');
     }
 
     // ---------- INIT ----------
-    async function init() {
+    function init() {
         log.info('Init on', location.href);
 
-        // Applica subito i fix
         applyFixes();
-
-        // Osserva i cambiamenti (es. video iniettato dopo)
+        createOverlay();
+        document.addEventListener('keydown', handleKeyboardSkip);
         startObserver();
 
-        // Fallback: dopo 5 secondi se non c'è video, riprova un'ultima volta
-        setTimeout(() => {
-            applyFixes();
-        }, 5000);
-
+        // Fallback: retry once more after 5 seconds
+        setTimeout(applyFixes, 5000);
     }
 
-    // Avvia
+    // Start
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init, { once: true });
     } else {

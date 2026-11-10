@@ -8,6 +8,8 @@ A Tampermonkey/Greasemonkey userscript that fixes various issues with RedGif vid
 - 🔊 **Enables audio** - Clicks the RedGif sound button when it is available
 - 🔗 **Blocks navigation links** - Prevents video links from navigating away from the embed
 - 🎮 **Click-to-play/pause** - Click the video backdrop to start or pause playback
+- 🖱️ **Mouse-aware playback** - Pauses when leaving the embed or using the mouse wheel, and resumes when re-entering
+- ⌨️ **Keyboard seeking** - Use the left and right arrow keys to skip backward or forward by 5 seconds
 - 🔄 **Dynamic detection** - Handles videos and controls added after the page loads
 - 🐛 **Debug logging** - Enable diagnostic messages by changing the `DEBUG` constant
 
@@ -26,11 +28,15 @@ The script runs on pages matching `https://www.redgifs.com/ifr/*` (typically Red
 3. Clicks the sound button (`.SoundButton`) when it is available
 4. Prevents `.videoLink` and `/watch/` links from navigating away
 5. Adds click-to-play/pause control to the video backdrop
-6. Watches for dynamically added page elements and applies the fixes to them
+6. Pauses playback when the pointer leaves the embed or the mouse wheel is used, and resumes on re-entry
+7. When `ENABLE_KEYBOARD_SKIP` is enabled, seeks 5 seconds backward or forward with the arrow keys
+8. Watches for dynamically added page elements and applies the fixes to them
 
 ## 🛠️ Usage
 
-The fixes are applied automatically. Click the video backdrop to start playback, and click it again to pause.
+The fixes are applied automatically. Click the video backdrop to start playback, and click it again to pause. Use the left and right arrow keys to seek backward or forward by 5 seconds.
+
+Set `ENABLE_KEYBOARD_SKIP` to `false` in the userscript settings to disable keyboard seeking.
 
 ### Debug mode
 
